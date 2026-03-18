@@ -1,20 +1,24 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const activeCheck = document.getElementById('active');
-    const historyList = document.getElementById('history-list');
-    const domainHeader = document.getElementById('domain-header');
-
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const currentDomain = new URL(tab.url).hostname;
-    domainHeader.innerText = `${currentDomain} Kayıtları:`;
 
-    // Aktiflik Durumu
-    chrome.storage.sync.get({ active: false }, (data) => {
-        activeCheck.checked = data.active;
+    // Aktif domainler listesini kontrol et
+    chrome.storage.local.get({ activeDomains: [] }, (data) => {
+        activeCheck.checked = data.activeDomains.includes(currentDomain);
     });
 
     activeCheck.onchange = () => {
-        chrome.storage.sync.set({ active: activeCheck.checked }, () => {
-            chrome.tabs.reload(tab.id); // Ayar değişince sayfayı yenile ki takip başlasın/dursun
+        chrome.storage.local.get({ activeDomains: [] }, (data) => {
+            let domains = data.activeDomains;
+            if (activeCheck.checked) {
+                if (!domains.includes(currentDomain)) domains.push(currentDomain);
+            } else {
+                domains = domains.filter(d => d !== currentDomain);
+            }
+            chrome.storage.local.set({ activeDomains: domains }, () => {
+                chrome.tabs.reload(tab.id); // Sadece o sekmeyi yenile
+            });
         });
     };
 
