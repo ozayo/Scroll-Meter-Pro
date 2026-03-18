@@ -58,6 +58,7 @@ $$1 \text{ px} \approx 0.0264 \text{ cm}$$
 - `content.js`: The core engine that runs on web pages to capture input events.
 - `popup.html`: The user interface for settings and data visualization.
 - `popup.js`: Logic for filtering domain-specific data, deleting records, and exporting files.
+- `icon.png`: The extension's icon displayed in the toolbar.
 
 ---
 
