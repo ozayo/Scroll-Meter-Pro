@@ -1,22 +1,22 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const activeCheck = document.getElementById('active');
+    const modeRadios = document.getElementsByName('mode');
     const historyList = document.getElementById('history-list');
-    const domainHeader = document.getElementById('domain-header');
-
-    // 1. Mevcut sekmenin bilgilerini al
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.url) return;
     
+    if (!tab || !tab.url) return;
     const currentDomain = new URL(tab.url).hostname;
-    domainHeader.innerText = `${currentDomain} Kayıtları:`;
+    document.getElementById('domain-header').innerText = `${currentDomain} Kayıtları:`;
 
-    // 2. Bu domain için eklenti aktif mi? (Ayar yükleme)
-    chrome.storage.local.get({ activeDomains: [] }, (data) => {
+    chrome.storage.local.get({ activeDomains: [], mode: 'topToBottom' }, (data) => {
         activeCheck.checked = data.activeDomains.includes(currentDomain);
+        const savedMode = data.mode || 'topToBottom';
+        const targetRadio = document.querySelector(`input[name="mode"][value="${savedMode}"]`);
+        if (targetRadio) targetRadio.checked = true;
     });
 
-    // 3. Aktifleştir/Devre Dışı Bırak Butonu
-    activeCheck.onchange = () => {
+    const updateConfig = () => {
+        const selectedMode = document.querySelector('input[name="mode"]:checked').value;
         chrome.storage.local.get({ activeDomains: [] }, (data) => {
             let domains = data.activeDomains;
             if (activeCheck.checked) {
@@ -24,74 +24,70 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 domains = domains.filter(d => d !== currentDomain);
             }
-            chrome.storage.local.set({ activeDomains: domains }, () => {
-                chrome.tabs.reload(tab.id); // Ayar değişince sayfayı yenile
+            chrome.storage.local.set({ activeDomains: domains, mode: selectedMode }, () => {
+                chrome.tabs.reload(tab.id);
             });
         });
     };
 
-    // 4. Geçmiş Kayıtları Listele (Render Function)
+    activeCheck.onchange = updateConfig;
+    modeRadios.forEach(r => r.onchange = updateConfig);
+
     const renderHistory = () => {
         chrome.storage.local.get({ history: [] }, (data) => {
-            // Filtreleme: Sadece mevcut domain'e ait olanları getir
             const filtered = data.history.filter(item => item.domain === currentDomain);
-            
             if (filtered.length === 0) {
-                historyList.innerHTML = "<p style='font-size:11px; color:#999; padding:10px;'>Bu site için henüz kayıt bulunamadı.</p>";
+                historyList.innerHTML = "<p style='font-size:11px; color:#999; padding:10px;'>Kayıt bulunamadı.</p>";
                 return;
             }
 
-            // Listeyi tarihe göre (en yeni en üstte) sırala ve ekrana bas
             historyList.innerHTML = filtered.slice().reverse().map(item => `
-                <div class="history-item" style="border-left: 4px solid #007bff; margin-bottom: 8px; padding: 10px; background: white; border-radius: 4px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <button class="delete-btn" data-id="${item.sessionID}" style="position: absolute; right: 8px; top: 8px; cursor: pointer; color: #dc3545; border: none; background: none; font-size: 16px;">×</button>
-                    <span class="url-text" style="color: #555; font-weight: bold; font-size: 11px; display: block; margin-bottom: 4px; word-break: break-all;">${item.url}</span>
-                    <div style="color:#888; font-size: 10px;">${item.date} | ${item.screen}</div>
-                    <div style="font-weight:bold; margin-top:3px; font-size: 11px;">${item.px} px | ${item.cm} cm | ${item.m} m</div>
+                <div class="history-item" style="border-left:4px solid #007bff; padding:10px; margin-bottom:8px; background:white; position:relative; font-size:11px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <button class="delete-btn" data-id="${item.sessionID}" style="position:absolute; right:8px; top:8px; color:#dc3545; border:none; background:none; cursor:pointer; font-size:18px;">×</button>
+                    <div style="font-weight:bold; margin-bottom:4px; word-break:break-all; padding-right:20px;">${item.url}</div>
+                    <div style="color:#777; font-size:10px;">${item.date} | 🖥 ${item.screen}</div>
+                    <div style="margin-top:6px; font-weight:bold;">
+                        ${item.mode === 'all' ? `↕ Toplam: ${item.totalPx}px (↓${item.pxDown} ↑${item.pxUp})` : `↓ Aşağı: ${item.pxDown}px`}
+                    </div>
                 </div>
             `).join('');
 
-            // Silme butonlarını bağla
             document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.onclick = (e) => {
-                    const idToDelete = e.target.getAttribute('data-id');
-                    deleteItem(idToDelete);
+                btn.onclick = function() {
+                    const id = this.getAttribute('data-id');
+                    chrome.storage.local.get({ history: [] }, (d) => {
+                        const newH = d.history.filter(i => i.sessionID.toString() !== id.toString());
+                        chrome.storage.local.set({ history: newH }, renderHistory);
+                    });
                 };
             });
         });
     };
 
-    // 5. Kayıt Silme Fonksiyonu
-    const deleteItem = (id) => {
-        chrome.storage.local.get({ history: [] }, (data) => {
-            const newHistory = data.history.filter(item => item.sessionID.toString() !== id.toString());
-            chrome.storage.local.set({ history: newHistory }, () => {
-                renderHistory(); // Listeyi güncelle
-            });
-        });
-    };
-
-    // 6. Export Fonksiyonları (CSV / Excel)
-    const exportData = (type) => {
+    const exportData = (format) => {
         chrome.storage.local.get({ history: [] }, (data) => {
             const filtered = data.history.filter(item => item.domain === currentDomain);
-            if (filtered.length === 0) return alert("İndirilecek veri yok!");
+            if (filtered.length === 0) return alert("Veri yok!");
 
-            const headers = ["URL", "Tarih", "Ekran", "Pixel", "CM", "Metre"];
-            const rows = filtered.map(i => [i.url, i.date, i.screen, i.px, i.cm, i.m]);
-            const content = [headers, ...rows].map(e => e.join(",")).join("\n");
-
-            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+            let blob, filename;
+            if (format === 'json') {
+                blob = new Blob([JSON.stringify({ [currentDomain]: filtered }, null, 2)], { type: 'application/json' });
+                filename = `${currentDomain}_scroll_data.json`;
+            } else {
+                const headers = ["URL", "Tarih", "Mod", "Toplam_PX", "Asagi_PX", "Yukari_PX", "Ekran"];
+                const rows = filtered.map(i => [`"${i.url}"`, i.date, i.mode, i.totalPx, i.pxDown, i.pxUp, i.screen]);
+                const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+                blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                filename = `${currentDomain}_scroll_data.csv`;
+            }
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = `${currentDomain}_scroll_data.${type === 'xls' ? 'xls' : 'csv'}`;
+            link.download = filename;
             link.click();
         });
     };
 
     document.getElementById('btnCSV').onclick = () => exportData('csv');
-    document.getElementById('btnXLS').onclick = () => exportData('xls');
-
-    // Sayfa açıldığında listeyi yükle
+    document.getElementById('btnJSON').onclick = () => exportData('json');
     renderHistory();
 });

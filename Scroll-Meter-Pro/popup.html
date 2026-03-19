@@ -3,33 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    body { width: 350px; font-family: 'Segoe UI', system-ui, sans-serif; padding: 15px; background: #f8f9fa; }
-    .header { font-weight: bold; color: #007bff; border-bottom: 2px solid #dee2e6; margin-bottom: 10px; padding-bottom: 5px; }
-    .history-item { 
-        background: white; padding: 10px; border-radius: 6px; margin-bottom: 8px; 
-        font-size: 11px; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    .url-text { color: #555; font-weight: bold; word-break: break-all; margin-bottom: 4px; display: block; }
-    .delete-btn { position: absolute; right: 8px; top: 8px; cursor: pointer; color: #dc3545; border: none; background: none; font-size: 16px; }
-    .export-area { margin-top: 15px; display: flex; gap: 10px; border-top: 1px solid #ddd; padding-top: 10px; }
-    button.download { flex: 1; padding: 8px; font-size: 12px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background: #fff; }
-    button.download:hover { background: #f0f0f0; }
-    .toggle-area { margin-bottom: 15px; font-weight: bold; background: #e9ecef; padding: 10px; border-radius: 6px; }
+    body { width: 350px; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 15px; background: #f8f9fa; }
+    .control-panel { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; }
+    .export-area { display: flex; gap: 10px; margin-top: 15px; }
+    .download { flex: 1; padding: 8px; border: 1px solid #007bff; background: white; color: #007bff; cursor: pointer; border-radius: 4px; font-weight: bold; }
+    .download:hover { background: #007bff; color: white; }
+    #history-list { max-height: 350px; overflow-y: auto; }
   </style>
 </head>
 <body>
-  <div class="toggle-area">
-    <label style="cursor:pointer"><input type="checkbox" id="active"> Scroll Meter'ı Aktifleştir</label>
+  <div class="control-panel">
+    <label style="font-weight:bold; display:block; margin-bottom:12px;"><input type="checkbox" id="active"> Eklenti Bu Sitede Aktif</label>
+    <div style="font-size:12px; border-top:1px solid #eee; padding-top:10px;">
+      <strong>Mod:</strong>
+      <label style="margin-left:10px;"><input type="radio" name="mode" value="topToBottom"> Sadece Aşağı</label>
+      <label style="margin-left:10px;"><input type="radio" name="mode" value="all"> Hepsi</label>
+    </div>
   </div>
-  
-  <div id="domain-header" class="header">Domain Kayıtları</div>
-  <div id="history-list" style="max-height: 300px; overflow-y: auto;"></div>
-
+  <div id="domain-header" style="font-weight:bold; font-size:13px; margin-bottom:10px; color:#333;"></div>
+  <div id="history-list"></div>
   <div class="export-area">
-    <button id="btnCSV" class="download">CSV İndir</button>
-    <button id="btnXLS" class="download">Excel İndir</button>
+    <button id="btnCSV" class="download">CSV</button>
+    <button id="btnJSON" class="download">JSON</button>
   </div>
-
   <script src="popup.js"></script>
 </body>
 </html>
