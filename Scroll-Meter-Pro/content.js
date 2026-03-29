@@ -1,4 +1,6 @@
 let downPx = 0, upPx = 0;
+const DPI = 96; 
+const PX_TO_CM = 2.54 / DPI; // 1 pikselin cm karşılığı
 const sessionID = Date.now();
 let config = { active: false, mode: 'topToBottom' };
 
@@ -17,7 +19,6 @@ function initTracker() {
         const scrollPos = window.innerHeight + window.pageYOffset;
         const pageHeight = document.documentElement.scrollHeight;
 
-        // Sayfa sonu ve başı sınırı (Boşa dönen tekerleği saymaz)
         if (delta > 0 && scrollPos >= pageHeight - 5) return;
         if (delta < 0 && window.pageYOffset <= 5) return;
 
@@ -32,15 +33,24 @@ function initTracker() {
     };
 
     function renderHUD() {
+        const totalPx = downPx + upPx;
+        const totalCm = totalPx * PX_TO_CM;
+        const displayDist = totalCm >= 100 
+            ? `${(totalCm / 100).toFixed(2)} m` 
+            : `${Math.round(totalCm)} cm`;
+
         let statsHTML = config.mode === 'topToBottom' 
-            ? `<span>↓ ${Math.round(downPx)}px</span>`
+            ? `<span>↓ ${Math.round(downPx)} px</span>`
             : `<div style="display:flex; flex-direction:column; font-size:10px;">
-                <span style="border-bottom:1px solid #555; padding-bottom:2px; margin-bottom:2px;">↕ Toplam: ${Math.round(downPx + upPx)}px</span>
+                <span style="border-bottom:1px solid #555; padding-bottom:2px; margin-bottom:2px;">↕ Toplam: ${Math.round(totalPx)} px</span>
                 <span>↓ ${Math.round(downPx)} | ↑ ${Math.round(upPx)}</span>
               </div>`;
         
         display.innerHTML = `
             ${statsHTML}
+            <div style="border-left:1px solid #555; padding-left:10px; color:#00ff00; font-size:11px; font-weight:bold;">
+                ${displayDist}
+            </div>
             <button id="go-to-top" title="Sayfa Başına Dön" style="background:#444; border:none; color:white; cursor:pointer; padding:4px 8px; border-radius:4px; font-size:14px; margin-left:5px;">⤒</button>
         `;
 
@@ -64,6 +74,9 @@ function initTracker() {
 }
 
 function saveToStorage() {
+    const totalPx = downPx + upPx;
+    const totalCm = totalPx * PX_TO_CM;
+    
     chrome.storage.local.get({ history: [] }, (result) => {
         const data = {
             sessionID, 
@@ -73,7 +86,8 @@ function saveToStorage() {
             screen: `${window.screen.width}x${window.screen.height}`,
             pxDown: Math.round(downPx), 
             pxUp: Math.round(upPx), 
-            totalPx: Math.round(downPx + upPx),
+            totalPx: Math.round(totalPx),
+            totalDist: totalCm >= 100 ? `${(totalCm / 100).toFixed(2)} m` : `${Math.round(totalCm)} cm`,
             mode: config.mode
         };
         let history = result.history;

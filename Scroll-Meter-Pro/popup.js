@@ -46,8 +46,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <button class="delete-btn" data-id="${item.sessionID}" style="position:absolute; right:8px; top:8px; color:#dc3545; border:none; background:none; cursor:pointer; font-size:18px;">×</button>
                     <div style="font-weight:bold; margin-bottom:4px; word-break:break-all; padding-right:20px;">${item.url}</div>
                     <div style="color:#777; font-size:10px;">${item.date} | 🖥 ${item.screen}</div>
-                    <div style="margin-top:6px; font-weight:bold;">
-                        ${item.mode === 'all' ? `↕ Toplam: ${item.totalPx}px (↓${item.pxDown} ↑${item.pxUp})` : `↓ Aşağı: ${item.pxDown}px`}
+                    <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:bold;">
+                            ${item.mode === 'all' ? `↕ Toplam: ${item.totalPx}px (↓${item.pxDown} ↑${item.pxUp})` : `↓ Aşağı: ${item.pxDown}px`}
+                        </span>
+                        <span style="color:#28a745; font-weight:bold; font-family:monospace;">📏 ${item.totalDist || '0 cm'}</span>
                     </div>
                 </div>
             `).join('');
@@ -74,8 +77,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 blob = new Blob([JSON.stringify({ [currentDomain]: filtered }, null, 2)], { type: 'application/json' });
                 filename = `${currentDomain}_scroll_data.json`;
             } else {
-                const headers = ["URL", "Tarih", "Mod", "Toplam_PX", "Asagi_PX", "Yukari_PX", "Ekran"];
-                const rows = filtered.map(i => [`"${i.url}"`, i.date, i.mode, i.totalPx, i.pxDown, i.pxUp, i.screen]);
+                const headers = ["URL", "Tarih", "Mod", "Toplam_PX", "Asagi_PX", "Yukari_PX", "Mesafe", "Ekran"];
+                const rows = filtered.map(i => [
+                    `"${i.url}"`, i.date, i.mode, i.totalPx, i.pxDown, i.pxUp, i.totalDist || '0 cm', i.screen
+                ]);
                 const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
                 blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                 filename = `${currentDomain}_scroll_data.csv`;
